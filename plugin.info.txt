@@ -1,0 +1,7 @@
+base   advrack
+author Ashraf Hasson
+email  ashraf.hasson@gmail.com
+date   2014-04-17
+name   advrack plugin
+desc   Display block representation of standard racks, mounted server and server cages
+url    http://www.test.com
