@@ -108,32 +108,18 @@ function drawEquipment(paper, rack, equipment) {
 				var server_block = paper.rect(boundaries.x, boundaries.y + ((equipment['index']-1) * 4.445 * drawing_hscale), boundaries.width, equipment_height, 2.0);
 				// set server attributes
 				var attributes = {'fill': 'white'};
-				if (equipment['options']) {
-					if (equipment['options']['fill-color'])
-						attributes['fill'] = equipment['options']['fill-color'];
-				}
+				if (equipment['fill-color'])
+					attributes['fill'] = equipment['fill-color'];
 				server_block.attr(attributes);
 
 				// create cosmetic effects
 				setupGlowEffect(server_block);
 
 				// set server description
-				// setupTooltip(server_block, equipment);
-				if (equipment['description']) {
-					jQuery(server_block.node).qtip({
-						content: {
-							text: equipment['description']
-						},
-						position: {
-							my: 'bottom left',
-							at: 'top right',
-							target: 'mouse'
-						},
-						style: {
-							classes: 'qtip-light qtip-shadow qtip-rounded'
-						}
-					});
-				}
+				if (equipment['tooltip'])
+					setupTooltip(server_block, equipment['tooltip']);
+
+				// bundle stuff into one raphael object
 				server.push(server_block);
 
 				// set server label
@@ -151,42 +137,79 @@ function drawEquipment(paper, rack, equipment) {
 				var cage_block = paper.rect(boundaries.x, boundaries.y + ((equipment['index']-1) * 4.445 * drawing_hscale), boundaries.width, equipment_height, 2.0);
 				// set cage attributes
 				var attributes = {'fill': 'white'};
-				if (equipment['options']) {
-					if (equipment['options']['fill-color'])
-						attributes['fill'] = equipment['options']['fill-color'];
-				}
+				if (equipment['fill-color'])
+					attributes['fill'] = equipment['fill-color'];
 				cage_block.attr(attributes);
 
 				// draw cage decks
 				if (equipment['decks']) {
-					//var decks = paper.set();
 					var previous_deck_height = 0;
 					var dl = equipment['decks'];
-					//jQuery.each(equipment['decks'], function(idx, deck) {
 					for (var d = 0; d < dl.length; d++) {
 						var deck = equipment['decks'][d];
-						console.log(deck);
 						var boundaries = cage_block.getBBox();
 						var h = deck['height'].match(h_regexp);
 						var deck_height = h[1] * 4.445 * drawing_hscale;
 						var raph_deck = paper.set();
-						var deck_block;
+						var deck_block, r1=0, r2=0, r3=0, r4=0;
 						if (d == 0) {
 							deck_block = paper.roundedRectangle(boundaries.x, boundaries.y + previous_deck_height, boundaries.width, deck_height, 2,2,0,0);
+							// set cornors for later use within sub-modules
+							r1 = 2, r2 = 2, r3 = 0, r4 =0;
 						} else if (d < dl.length - 1) {
 							deck_block = paper.roundedRectangle(boundaries.x, boundaries.y + previous_deck_height, boundaries.width, deck_height, 0,0,0,0);
+							// set cornors for later use within sub-modules
+							r1 = 0, r2 = 0, r3 = 0, r4 =0;
 						} else {
 							deck_block = paper.roundedRectangle(boundaries.x, boundaries.y + previous_deck_height, boundaries.width, deck_height, 0,0,2,2);
+							// set cornors for later use within sub-modules
+							r1 = 0, r2 = 0, r3 = 2, r4 =0;
 						}
 						
-						deck_block.hover(function(){console.log(deck['index'])});
+						// fill the deck with white so mouse hover would have the correct effect
 						deck_block.attr('fill', 'white');
+
+						// set server description
+						if (deck['tooltip'])
+							setupTooltip(deck_block, deck['tooltip']);
+
+						// create cosmetic effects
 						setupGlowEffect(deck_block);
 
+						// draw blocks and blades
+						if (deck['type'] === 'block') {
+							// calculate block width
+							var blocks = deck['blocks'];
+							var block_width = (boundaries.width)/(blocks.length);
+							var previous_block_width = 0;
+							for (var b = 0; b < blocks.length; b++) {
+								var block_block;
+								if (b == 0) {
+									block_block = paper.roundedRectangle(boundaries.x + previous_block_width, boundaries.y + previous_deck_height, block_width, deck_height, r1,0,0,r4);
+								} else if (b < blocks.length - 1) {
+									block_block = paper.rect(boundaries.x + previous_block_width, boundaries.y + previous_deck_height, block_width, deck_height, 0,0,0,0);
+								} else {
+									block_block = paper.roundedRectangle(boundaries.x + previous_block_width, boundaries.y + previous_deck_height, block_width, deck_height, 0,r2,r3,0);
+								}
+								if (blocks[b]['fill-color'])
+									block_block.attr('fill', blocks[b]['fill-color']);
+								if (blocks[b]['tooltip']) {
+									setupTooltip(block_block, blocks[b]['tooltip']);
+								} else if (deck['tooltip']) {
+									setupTooltip(block_block, deck['tooltip']);
+								} else {
+									if (equipment['tooltip'])
+										setupTooltip(block_block, equipment['tooltip']);
+								}
+								previous_block_width += block_width;
+							}
+						} else if (deck['type'] === 'blade') {
+						} else {
+							drawError({'msg': 'Invalid equipment type! Decks can have type \'block\' or \'blade\' only.'});
+						}
+
 						raph_deck.push(deck_block);
-						//decks.push(raph_deck);
 						previous_deck_height += deck_height;
-					//});
 					}
 				}
 
@@ -264,6 +287,11 @@ function setupGlowEffect(unit) {
 	}, function() { // hover out 
 		this.glow_effect.remove();
 	});
+}
+
+function setupTooltip(raph_obj, tooltip) {
+	if (tooltip)
+		jQuery(raph_obj.node).qtip(tooltip);
 }
 
 function drawError (errors) {
