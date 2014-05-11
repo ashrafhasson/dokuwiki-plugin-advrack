@@ -1,12 +1,13 @@
-advrack Plugin for DokuWiki
+dokuwiki-plugin-advrack - advrack Plugin for DokuWiki
+=====================================================
 
-Display block representation of standard racks, mounted server and server cages
+Display block representation of standard racks, mounted servers and server cages
 
 All documentation for this plugin can be found at
-http://www.test.com
+https://www.dokuwiki.org/plugin:advrack
 
 If you install this plugin manually, make sure it is installed in
-lib/plugins/advrack/ - if the folder is called different it
+lib/plugins/advrack/ - if the folder is named differently, it
 will not work!
 
 Please refer to http://www.dokuwiki.org/plugins for additional info

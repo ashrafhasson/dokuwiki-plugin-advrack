@@ -1,8 +1,9 @@
+/* DOKUWIKI:include_once raphael.js */
 /* DOKUWIKI:include_once jquery.qtip.js */
 
 jQuery(function () {
 	console.log('---------------------');
-	console.log('ADVRack Plugin v0.0.1');
+	console.log('ADVRack Plugin v0.0.2');
         console.log('jQuery ' + jQuery().jquery);
 	console.log('---------------------');
 
@@ -39,8 +40,7 @@ function drawRack (el) {
 	// iterate over how many racks we have defined.
 	jQuery.each(racks, function(idx, rack) {
 		if (! rack['options']['height']) {
-			drawError({msg: "No height property found at rack index: " + rack['options']['index']});
-			exit();
+			drawError({'paper': paper, msg: "No height property found at rack index: " + rack['options']['index']});
 		}
 
 		var rack_height = rack['options']['height'].match(h_regexp);
@@ -92,7 +92,7 @@ function drawRack (el) {
 					drawEquipment(paper, raph_rack, item);
 			});
 		} else {
-			drawError({'msg': 'Sum of servers and cages height is more than rack ' + rack['options']['index'] + '\'s U space!'});
+			drawError({'paper': paper, 'msg': 'Sum of servers and cages height is more than rack ' + rack['options']['index'] + '\'s U space!'});
 		}
 	});
 }
@@ -124,7 +124,7 @@ function drawEquipment(paper, rack, equipment) {
 
 				// set server label
 				if (equipment['label']) {
-					boundaries = server.getBBox();
+					var boundaries = server_block.getBBox();
 					var text = paper.text(boundaries.width/2+6, boundaries.y + boundaries.height/2, equipment['label']).attr({'font-size': 4, 'fill': 'black', 'text-anchor': 'middle'});
 					server.push(text);
 				}
@@ -141,6 +141,13 @@ function drawEquipment(paper, rack, equipment) {
 					attributes['fill'] = equipment['fill-color'];
 				cage_block.attr(attributes);
 
+				// set cage label: might be overwritten by modules
+				if (equipment['label']) {
+					var boundaries = cage_block.getBBox();
+					var text = paper.text(boundaries.width/2+6, boundaries.y + boundaries.height/2, equipment['label']).attr({'font-size': 4, 'fill': 'black', 'text-anchor': 'middle'});
+					cage.push(text);
+				}
+
 				// draw cage decks
 				if (equipment['decks']) {
 					var previous_deck_height = 0;
@@ -148,64 +155,52 @@ function drawEquipment(paper, rack, equipment) {
 					for (var d = 0; d < dl.length; d++) {
 						var deck = equipment['decks'][d];
 						var boundaries = cage_block.getBBox();
+						if (! deck['height'])
+							drawError({'paper': paper, 'msg': 'Height not defined in one of cage ' + equipment['index'] + ' decks'});
 						var h = deck['height'].match(h_regexp);
 						var deck_height = h[1] * 4.445 * drawing_hscale;
 						var raph_deck = paper.set();
-						var deck_block, r1=0, r2=0, r3=0, r4=0;
+						var deck_block, corner = [0,0,0,0];
 						if (d == 0) {
 							deck_block = paper.roundedRectangle(boundaries.x, boundaries.y + previous_deck_height, boundaries.width, deck_height, 2,2,0,0);
 							// set cornors for later use within sub-modules
-							r1 = 2, r2 = 2, r3 = 0, r4 =0;
-						} else if (d < dl.length - 1) {
+							corner = [2,2,0,0];
+						} else if (d < dl.length - 1) { 
 							deck_block = paper.roundedRectangle(boundaries.x, boundaries.y + previous_deck_height, boundaries.width, deck_height, 0,0,0,0);
 							// set cornors for later use within sub-modules
-							r1 = 0, r2 = 0, r3 = 0, r4 =0;
+							corner = [0,0,0,0];
 						} else {
 							deck_block = paper.roundedRectangle(boundaries.x, boundaries.y + previous_deck_height, boundaries.width, deck_height, 0,0,2,2);
 							// set cornors for later use within sub-modules
-							r1 = 0, r2 = 0, r3 = 2, r4 =0;
+							corner = [0,0,2,2];
 						}
 						
 						// fill the deck with white so mouse hover would have the correct effect
 						deck_block.attr('fill', 'white');
 
-						// set server description
+						// setup the deck's tooltip
 						if (deck['tooltip'])
 							setupTooltip(deck_block, deck['tooltip']);
 
+						// set the deck's label
+						if (deck['label']) {
+							var boundaries = deck_block.getBBox();
+							var text = paper.text(boundaries.width/2+6, boundaries.y + boundaries.height/2, deck['label']).attr({'font-size': 4, 'fill': 'black', 'text-anchor': 'middle'});
+							raph_deck.push(text);
+						}
+							
 						// create cosmetic effects
 						setupGlowEffect(deck_block);
 
 						// draw blocks and blades
 						if (deck['type'] === 'block') {
-							// calculate block width
-							var blocks = deck['blocks'];
-							var block_width = (boundaries.width)/(blocks.length);
-							var previous_block_width = 0;
-							for (var b = 0; b < blocks.length; b++) {
-								var block_block;
-								if (b == 0) {
-									block_block = paper.roundedRectangle(boundaries.x + previous_block_width, boundaries.y + previous_deck_height, block_width, deck_height, r1,0,0,r4);
-								} else if (b < blocks.length - 1) {
-									block_block = paper.rect(boundaries.x + previous_block_width, boundaries.y + previous_deck_height, block_width, deck_height, 0,0,0,0);
-								} else {
-									block_block = paper.roundedRectangle(boundaries.x + previous_block_width, boundaries.y + previous_deck_height, block_width, deck_height, 0,r2,r3,0);
-								}
-								if (blocks[b]['fill-color'])
-									block_block.attr('fill', blocks[b]['fill-color']);
-								if (blocks[b]['tooltip']) {
-									setupTooltip(block_block, blocks[b]['tooltip']);
-								} else if (deck['tooltip']) {
-									setupTooltip(block_block, deck['tooltip']);
-								} else {
-									if (equipment['tooltip'])
-										setupTooltip(block_block, equipment['tooltip']);
-								}
-								previous_block_width += block_width;
-							}
+							if (deck['blocks'])
+								drawDeckModules(paper, boundaries, corner, previous_deck_height, deck_height, deck['blocks'], deck, equipment);
 						} else if (deck['type'] === 'blade') {
+							if (deck['blades'])
+								drawDeckModules(paper, boundaries, corner, previous_deck_height, deck_height, deck['blades'], deck, equipment);
 						} else {
-							drawError({'msg': 'Invalid equipment type! Decks can have type \'block\' or \'blade\' only.'});
+							drawError({'paper': paper, 'msg': 'Invalid equipment type! Decks can have type \'block\' or \'blade\' only.'});
 						}
 
 						raph_deck.push(deck_block);
@@ -230,10 +225,10 @@ function drawEquipment(paper, rack, equipment) {
 				panel.push(filler, text1, text2);
 				break;
 			default:
-				drawError({'msg': 'Invalid equipment type! This is a possible bug in the ADVRack plugin.'});
+				drawError({'paper': paper, 'msg': 'Invalid equipment type! This is a possible bug in the ADVRack plugin.'});
 		}
 	} else {
-		drawError({'msg': 'No equipment type specified!'});
+		drawError({'paper': paper, 'msg': 'No equipment type specified!'});
 	}
 }
 
@@ -294,7 +289,62 @@ function setupTooltip(raph_obj, tooltip) {
 		jQuery(raph_obj.node).qtip(tooltip);
 }
 
-function drawError (errors) {
+function drawDeckModules(paper, rack_boundaries, corner, previous_deck_height, deck_height, modules, deck, equipment) {
+	// calculate module width
+	var module_width = (rack_boundaries.width)/(modules.length);
+	var previous_module_width = 0;
+	for (var b = 0; b < modules.length; b++) {
+		var module;
+		if (b == 0) {
+			module = paper.roundedRectangle(rack_boundaries.x + previous_module_width, rack_boundaries.y + previous_deck_height, module_width, deck_height, corner[0],0,0,corner[3]);
+			// draw a thin border around the module; useful to define our module edges if it has a fill color.
+			paper.roundedRectangle(rack_boundaries.x + previous_module_width, rack_boundaries.y + previous_deck_height, module_width, deck_height, corner[0],0,0,corner[3]).attr({'stroke-width': 0.2, 'stroke': 'black'});
+		} else if (b < modules.length - 1) {
+			module = paper.rect(rack_boundaries.x + previous_module_width, rack_boundaries.y + previous_deck_height, module_width, deck_height, 0,0,0,0);
+			// draw a thin border around the module; useful to define our module edges if it has a fill color.
+			paper.roundedRectangle(rack_boundaries.x + previous_module_width, rack_boundaries.y + previous_deck_height, module_width, deck_height,0,0,0,0).attr({'stroke-width': 0.2, 'stroke': 'black'});
+		} else {
+			module = paper.roundedRectangle(rack_boundaries.x + previous_module_width, rack_boundaries.y + previous_deck_height, module_width, deck_height, 0,corner[1],corner[2],0);
+			// draw a thin border around the module; useful to define our module edges if it has a fill color.
+			paper.roundedRectangle(rack_boundaries.x + previous_module_width, rack_boundaries.y + previous_deck_height, module_width, deck_height,0,corner[1],corner[2],0).attr({'stroke-width': 0.2, 'stroke': 'black'});
+		}
+
+		// a few cosmetic touches
+		if (modules[b]['fill-color']) {
+			module.attr('fill', modules[b]['fill-color']);
+		} else {
+			module.attr('fill', 'white');
+		}
+		if (modules[b]['tooltip']) {
+			setupTooltip(module, modules[b]['tooltip']);
+		} else if (deck['tooltip']) {
+			setupTooltip(module, deck['tooltip']);
+		} else {
+			if (equipment['tooltip'])
+				setupTooltip(module, equipment['tooltip']);
+		}
+
+		// set the deck's label
+		if (modules[b]['label']) {
+				
+			var boundaries = module.getBBox();
+			var text = paper.text(boundaries.x + boundaries.width/2, boundaries.y + boundaries.height/2, modules[b]['label']).attr({'font-size': 4, 'fill': 'black', 'text-anchor': 'middle'});
+			if (deck['type'] === 'blade')
+				text.transform('r-90');
+		}
+		
+		// add glow effect to modules
+		setupGlowEffect(module);
+
+		previous_module_width += module_width;
+	}
+}
+
+function drawError (error) {
 	// a function to show error messasge, instead of rack drawing
-	console.log(errors);
+	var paper = error.paper;
+	paper.clear();
+	var msg = error.msg;
+	paper.text(10,10, 'ERROR: ' + msg).attr('text-anchor', 'start');
+	exit();
 }
