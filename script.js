@@ -14,7 +14,7 @@ jQuery(function () {
 });
 
 // define a few global variables
-var drawing_wscale = 2.5, drawing_hscale = 1.5;
+var drawing_wscale = 2.0, drawing_hscale = 1.5;
 var h_regexp = /^(\d{1,2})([u|in|cm])*/i, w_regexp = /^(\d{1,2})([in|cm])/i;
 
 Raphael.fn.roundedRectangle = function (x, y, w, h, r1, r2, r3, r4){
@@ -30,11 +30,12 @@ Raphael.fn.roundedRectangle = function (x, y, w, h, r1, r2, r3, r4){
 function drawRack (el) {
 	var racks = jQuery.parseJSON(jQuery.text(el));
 	el.innerHTML = ""; // hide syntax from page.
-
+	
+	var rackoffset = 0;
 
 	// define the Raphael paper object
 	var paper = Raphael(el,0,0);
-	paper.setViewBox(0,0,400,300,true);
+	paper.setViewBox(0,0,410,300,true);
 	paper.setSize('100%', '100%');
 
 	// iterate over how many racks we have defined.
@@ -46,6 +47,9 @@ function drawRack (el) {
 		var rack_height = rack['options']['height'].match(h_regexp);
 		var rack_width = rack['options']['width'].match(w_regexp);
 		
+		// calculate start point
+		rackoffset+=5;		
+
 		// calculate total height
 		var servers_height = calcHeight(rack['servers']);
 		var cages_height = calcHeight(rack['cages']);
@@ -66,7 +70,12 @@ function drawRack (el) {
 
 		if ((servers_height['height'] + cages_height['height']) <= rack_height[1] * 4.445) {
 			// draw the rack first: we're scaling 1:1 cm to pixel, we're also converting in to cm for the width and u to cm for the height
-			var raph_rack = paper.rect(6,6, rack_width[1] * 2.54 * drawing_wscale, rack_height[1] * 4.445 * drawing_hscale);
+			var raph_rack_title = paper.rect(rackoffset, 6,  rack_width[1] * 2.54 * drawing_wscale, 10 );
+			raph_rack_title.attr({"stroke-width": 4});
+			raph_rack_title.attr({"stroke": "gray"});
+			raph_rack_title.attr({"fill": "gray"});
+			paper.text(rackoffset+(rack_width[1] * 2.54 * drawing_wscale) , 10, rack['options']['label'] ).attr({'font-size': 4, 'fill': 'black', 'text-anchor': 'end'});
+			var raph_rack = paper.rect(rackoffset, 16, rack_width[1] * 2.54 * drawing_wscale, rack_height[1] * 4.445 * drawing_hscale );
 			raph_rack.attr({"stroke-width": 4});
 
 			// index the equipment from top to bottom
@@ -94,6 +103,7 @@ function drawRack (el) {
 		} else {
 			drawError({'paper': paper, 'msg': 'Sum of servers and cages height is more than rack ' + rack['options']['index'] + '\'s U space!'});
 		}
+		rackoffset+=rack_width[1] * 2.54 * drawing_wscale;
 	});
 }
 
@@ -125,7 +135,7 @@ function drawEquipment(paper, rack, equipment) {
 				// set server label
 				if (equipment['label']) {
 					var boundaries = server_block.getBBox();
-					var text = paper.text(boundaries.width/2+6, boundaries.y + boundaries.height/2, equipment['label']).attr({'font-size': 4, 'fill': 'black', 'text-anchor': 'middle'});
+					var text = paper.text(boundaries.x+boundaries.width/2, boundaries.y + boundaries.height/2, equipment['label']).attr({'font-size': 4, 'fill': 'black', 'text-anchor': 'middle'});
 					server.push(text);
 				}
 				break;
