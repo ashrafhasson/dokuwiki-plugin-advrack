@@ -45,7 +45,7 @@ class syntax_plugin_advrack extends DokuWiki_Syntax_Plugin {
      * @param Doku_Handler    $handler The handler
      * @return array Data for the renderer
      */
-    public function handle($match, $state, $pos, Doku_Handler &$handler){
+    public function handle($match, $state, $pos, Doku_Handler $handler){
 	switch ($state) {
 	        case DOKU_LEXER_ENTER : return array($state, array($state, $match));
 	        case DOKU_LEXER_UNMATCHED : return array($state, $match);
@@ -62,7 +62,7 @@ class syntax_plugin_advrack extends DokuWiki_Syntax_Plugin {
      * @param array          $data      The data from the handler() function
      * @return bool If rendering was successful.
      */
-    public function render($mode, Doku_Renderer &$renderer, $data) {
+    public function render($mode, Doku_Renderer $renderer, $data) {
         if($mode == 'xhtml') {
 		list($state,$match) = $data;
 		switch ($state) {
